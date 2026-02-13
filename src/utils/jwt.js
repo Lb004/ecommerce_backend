@@ -11,3 +11,11 @@ export const generateToken = (user) => {
     { expiresIn: "1h" }
   );
 };
+
+export const generateResetToken = () => {
+  return jwt.sign(
+    { purpose: "password-reset" },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+};

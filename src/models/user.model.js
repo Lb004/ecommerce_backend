@@ -12,7 +12,9 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     unique: true,
-    required: true
+    required: true,
+    lowercase: true,
+    trim: true
   },
   age: {
     type: Number
@@ -27,8 +29,17 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
+    enum: ["user", "admin"],
     default: "user"
+  },
+  resetPasswordToken: {
+    type: String
+  },
+  resetPasswordExpires: {
+    type: Date
   }
+}, {
+  timestamps: true
 });
 
 export const UserModel = mongoose.model("Users", userSchema);

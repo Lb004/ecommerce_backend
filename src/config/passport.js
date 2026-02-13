@@ -24,4 +24,24 @@ export const initializePassport = () => {
       }
     )
   );
+
+  // Estrategia "current" para obtener el usuario actual
+  passport.use(
+    "current",
+    new JWTStrategy(
+      {
+        jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
+        secretOrKey: process.env.JWT_SECRET
+      },
+      async (jwt_payload, done) => {
+        try {
+          const user = await UserModel.findById(jwt_payload.id).populate("cart");
+          if (!user) return done(null, false);
+          return done(null, user);
+        } catch (error) {
+          return done(error);
+        }
+      }
+    )
+  );
 };

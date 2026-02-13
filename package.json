@@ -1,16 +1,31 @@
 {
-  "name": "ecommerce",
-  "version": "1.0.0",
+  "name": "ecommerce-final",
+  "version": "2.0.0",
+  "description": "E-Commerce Backend - Entrega Final con arquitectura profesional",
   "type": "module",
+  "main": "src/app.js",
   "scripts": {
-    "dev": "node src/app.js"
+    "dev": "node src/app.js",
+    "start": "node src/app.js"
   },
+  "keywords": [
+    "ecommerce",
+    "backend",
+    "nodejs",
+    "express",
+    "mongodb",
+    "jwt",
+    "passport"
+  ],
+  "author": "Lucas",
+  "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.4",
+    "nodemailer": "^6.9.8",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1"
   }

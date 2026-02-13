@@ -1,72 +1,101 @@
 import { Router } from "express";
 import passport from "passport";
-import { UserModel } from "../models/user.model.js";
-import { isValidPassword } from "../utils/hash.js";
-import { generateToken } from "../utils/jwt.js";
+import { AuthService } from "../services/auth.service.js";
+import { UserDTO } from "../dto/user.dto.js";
 
 const router = Router();
+const authService = new AuthService();
 
 // 🔐 LOGIN
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validar que se envíen email y password
     if (!email || !password) {
-      return res.status(400).json({ 
-        error: "Email y password son requeridos" 
+      return res.status(400).json({
+        error: "Email y password son requeridos"
       });
     }
 
-    // Buscar usuario por email
-    const user = await UserModel.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ 
-        error: "Credenciales inválidas" 
-      });
-    }
-
-    // Validar contraseña
-    if (!isValidPassword(user, password)) {
-      return res.status(401).json({ 
-        error: "Credenciales inválidas" 
-      });
-    }
-
-    // Generar token JWT
-    const token = generateToken(user);
+    const { token, user } = await authService.login(email, password);
 
     res.json({
       message: "Login correcto",
-      token
+      token,
+      user: new UserDTO(user)
     });
   } catch (error) {
     console.error("Error en login:", error);
-    res.status(500).json({ 
-      error: "Error al procesar el login" 
+    res.status(401).json({
+      error: error.message
     });
   }
 });
 
-// 👤 OBTENER USUARIO ACTUAL (Ruta protegida)
+// 👤 OBTENER USUARIO ACTUAL (Ruta protegida con DTO)
 router.get(
   "/current",
-  passport.authenticate("jwt", { session: false }),
+  passport.authenticate("current", { session: false }),
   (req, res) => {
     try {
-      // Excluir la contraseña de la respuesta
-      const { password, ...user } = req.user._doc;
+      // Retornar solo datos no sensibles usando DTO
+      const userDTO = new UserDTO(req.user);
       
-      res.json({ 
-        user 
+      res.json({
+        user: userDTO
       });
     } catch (error) {
       console.error("Error al obtener usuario actual:", error);
-      res.status(500).json({ 
-        error: "Error al obtener información del usuario" 
+      res.status(500).json({
+        error: "Error al obtener información del usuario"
       });
     }
   }
 );
+
+// 📧 SOLICITAR RECUPERACIÓN DE CONTRASEÑA
+router.post("/request-password-reset", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        error: "El email es requerido"
+      });
+    }
+
+    const result = await authService.requestPasswordReset(email);
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error al solicitar recuperación:", error);
+    res.status(500).json({
+      error: "Error al procesar la solicitud"
+    });
+  }
+});
+
+// 🔑 RESTABLECER CONTRASEÑA
+router.post("/reset-password/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword) {
+      return res.status(400).json({
+        error: "La nueva contraseña es requerida"
+      });
+    }
+
+    const result = await authService.resetPassword(token, newPassword);
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error al restablecer contraseña:", error);
+    res.status(400).json({
+      error: error.message
+    });
+  }
+});
 
 export default router;
