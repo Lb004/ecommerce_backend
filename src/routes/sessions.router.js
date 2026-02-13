@@ -1,72 +1,44 @@
 import { Router } from "express";
 import passport from "passport";
-import { UserModel } from "../models/user.model.js";
-import { isValidPassword } from "../utils/hash.js";
-import { generateToken } from "../utils/jwt.js";
+import { SessionsService } from "../services/sessions.service.js";
+import { CurrentUserDto } from "../dto/current-user.dto.js";
 
 const router = Router();
+const sessionsService = new SessionsService();
 
-// 🔐 LOGIN
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validar que se envíen email y password
     if (!email || !password) {
-      return res.status(400).json({ 
-        error: "Email y password son requeridos" 
-      });
+      return res.status(400).json({ error: "Email y password son requeridos" });
     }
 
-    // Buscar usuario por email
-    const user = await UserModel.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ 
-        error: "Credenciales inválidas" 
-      });
-    }
-
-    // Validar contraseña
-    if (!isValidPassword(user, password)) {
-      return res.status(401).json({ 
-        error: "Credenciales inválidas" 
-      });
-    }
-
-    // Generar token JWT
-    const token = generateToken(user);
-
-    res.json({
-      message: "Login correcto",
-      token
-    });
+    const token = await sessionsService.login(email, password);
+    return res.json({ message: "Login correcto", token });
   } catch (error) {
-    console.error("Error en login:", error);
-    res.status(500).json({ 
-      error: "Error al procesar el login" 
-    });
+    return res.status(401).json({ error: error.message });
   }
 });
 
-// 👤 OBTENER USUARIO ACTUAL (Ruta protegida)
-router.get(
-  "/current",
-  passport.authenticate("jwt", { session: false }),
-  (req, res) => {
-    try {
-      // Excluir la contraseña de la respuesta
-      const { password, ...user } = req.user._doc;
-      
-      res.json({ 
-        user 
-      });
-    } catch (error) {
-      console.error("Error al obtener usuario actual:", error);
-      res.status(500).json({ 
-        error: "Error al obtener información del usuario" 
-      });
-    }
+router.get("/current", passport.authenticate("current", { session: false }), (req, res) => {
+  const dto = new CurrentUserDto(req.user);
+  res.json({ user: dto });
+});
+
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  await sessionsService.createPasswordRecovery(email);
+  res.json({ message: "Si el email existe, enviamos un enlace de recuperación" });
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    await sessionsService.resetPassword(token, newPassword);
+    res.json({ message: "Contraseña actualizada correctamente" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
-);
+});
 
 export default router;
